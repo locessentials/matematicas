@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lógica · Estudio de Matemáticas</title>
+  <link rel="stylesheet" href="../assets/css/estilos.css">
+</head>
+<body>
+  <header class="encabezado">
+    <a class="volver" href="../">← Unidades</a>
+    <h1>Lógica</h1>
+    <p class="sub">Leyes, reglas de inferencia y técnicas de demostración</p>
+  </header>
+  <main id="app"></main>
+
+  <!-- Núcleo y motores compartidos -->
+  <script src="../assets/js/estudio.js"></script>
+  <script src="../assets/js/tarjetas.js"></script>
+  <script src="../assets/js/problemas.js"></script>
+
+  <!-- Datos de esta unidad: el orden de los scripts es el orden de las pestañas -->
+  <script>ESTUDIO.unidad({ id: 'logica', titulo: 'Lógica' });</script>
+  <script src="datos/tarjetas-hoja.js"></script>
+  <script src="datos/tarjetas-variables.js"></script>
+  <script src="datos/directa.js"></script>
+  <script src="datos/tecnicas.js"></script>
+  <script src="datos/narrativas.js"></script>
+  <script src="mezcla.js"></script>
+
+  <script>ESTUDIO.iniciar();</script>
+</body>
+</html>

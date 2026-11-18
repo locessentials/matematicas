@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Estudio · Matemáticas para Ciencias de la Computación</title>
+  <link rel="stylesheet" href="assets/css/estilos.css">
+</head>
+<body>
+  <header class="encabezado">
+    <h1>Matemáticas para Ciencias de la Computación</h1>
+    <p class="sub">Guía de estudio para el examen final · Curso de Selección CIC</p>
+  </header>
+  <main>
+    <ul id="unidades" class="unidades"></ul>
+  </main>
+  <script src="unidades.js"></script>
+  <script>
+    const lista = document.getElementById('unidades');
+    window.UNIDADES.forEach((u, i) => {
+      const li = document.createElement('li');
+      const inner = u.lista ? document.createElement('a') : document.createElement('div');
+      if (u.lista) inner.href = u.id + '/';
+      inner.className = 'unidad' + (u.lista ? '' : ' pendiente');
+      inner.innerHTML = `<span class="num">${i + 1}</span><span><strong></strong><small></small></span>`;
+      inner.querySelector('strong').textContent = u.nombre;
+      inner.querySelector('small').textContent = u.resumen;
+      li.append(inner);
+      lista.append(li);
+    });
+  </script>
+</body>
+</html>
