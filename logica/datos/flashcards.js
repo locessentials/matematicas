@@ -1,9 +1,9 @@
 // Tarjetas con las mismas variables que la hoja de "Propiedades y leyes de la lógica".
 // Campos: cat (categoría), nombre, formula (puede tener varias líneas con \n), nota (opcional).
 ESTUDIO.actividad({
-  id: 'tarjetas-hoja',
-  titulo: 'Flashcards: basadas en lo que vimos en clase',
-  corto: 'Flashcards (clase)',
+  id: 'flashcards',
+  titulo: 'Flashcards de lógica',
+  corto: 'Flashcards',
   tipo: 'tarjetas',
   descripcion:
     'Las leyes, reglas y técnicas con las mismas variables que vimos en clase. ' +

@@ -1,8 +1,16 @@
 // Motor de problemas: muestra uno al azar, sin repetir hasta terminar la ronda, con solución oculta.
 //   tipo 'problemas': { problemas: [...], instrucciones: [...], instruccionCorta }
 //   tipo 'mezcla':    { fuentes: ['directa', 'tecnicas', ...], cantidad: 10 }  (toma problemas de otras actividades)
-// Un problema: { id, enunciado, texto?: [líneas], variables?: [{v, s}], solucion }
-// solucion: { tecnica, pasos: [{ f, j, tipo?, sub? }], nota? }  o  { tecnica, contraejemplo, evaluacion: [...], nota? }
+// Un problema: { id, enunciado, pedido?, pista?, texto?: [líneas], variables?: [{v, s}], solucion }
+//   pedido: línea corta arriba del enunciado ("Demuestra o refuta:")
+//   pista:  texto (o lista de textos) que se muestra con el botón "Pista", sin enseñar la solución
+// solucion (una de estas formas):
+//   { tecnica, pasos: [{ f, j, op?, tipo?, sub? }], nota?, cierre? }
+//       op: conector al inicio del renglón (⟺, ⇒, =, ⊆); si algún paso lo tiene, se muestra una columna extra
+//       tipo: 'premisa' | 'supuesto' | 'negacion' | 'titulo' (renglón de encabezado que ocupa toda la fila)
+//   { tecnica, contraejemplo: { p: false } o { A: '{1}' }, evaluacion: [...], nota?, cierre? }
+//   { respuesta: true | false, evaluacion: [...], nota? }   (preguntas de verdadero o falso)
+// Los demás campos (tesis, hipotesis, datos, verificar, c) solo los usa tools/verificar.mjs.
 (function () {
   const { el, barajar, formula } = ESTUDIO;
 
@@ -46,9 +54,14 @@
       const { a, p, num } = resolver(estado.orden[estado.pos]);
       const n = estado.orden.length;
 
-      const solucion = el('div', { class: 'solucion oculto' }, pintarSolucion(p.solucion));
+      const sol = pintarSolucion(p.solucion);
+      const solucion = el('div', { class: 'solucion oculto' }, sol.partes);
       const btnSol = el('button', { class: 'btn', onclick: verSolucion }, 'Ver solución');
-      let btnVars = null, bloqueVars = null;
+      const btnPaso = sol.grupos.length > 1
+        ? el('button', { class: 'btn', onclick: unPaso, title: 'Muestra un renglón de la solución a la vez' }, 'Un renglón más')
+        : null;
+      let btnVars = null, bloqueVars = null, btnPista = null, bloquePista = null;
+      let mostrados = -1; // -1: todavía no se abre la solución paso a paso
 
       const cuerpo = [];
       if (esMezcla) cuerpo.push(el('p', { class: 'instruccion-corta' }, a.instruccionCorta || ''));
@@ -64,34 +77,69 @@
         } }, 'Ver variables y fórmula');
         cuerpo.push(bloqueVars);
       } else {
+        if (p.pedido) cuerpo.push(el('p', { class: 'pedido' }, p.pedido));
         cuerpo.push(formula(p.enunciado, 'formula grande enunciado'));
       }
+      if (p.pista) {
+        const pistas = [].concat(p.pista);
+        bloquePista = el('div', { class: 'pista oculto' }, el('strong', {}, 'Pista: '),
+          ...pistas.map((t, i) => (i ? [el('br'), t] : t)));
+        btnPista = el('button', { class: 'btn', onclick: verPista }, 'Pista');
+        cuerpo.push(bloquePista);
+      }
 
-      function verSolucion() {
+      function verPista() {
+        if (!bloquePista) return;
+        bloquePista.classList.remove('oculto');
+        if (btnPista) { btnPista.remove(); btnPista = null; }
+      }
+      function abrirVariables() {
         if (bloqueVars) bloqueVars.classList.remove('oculto');
-        if (btnVars) btnVars.remove();
+        if (btnVars) { btnVars.remove(); btnVars = null; }
+      }
+      function verSolucion() {
+        abrirVariables();
+        sol.grupos.flat().concat(sol.final).forEach((x) => x.classList.remove('oculto'));
         solucion.classList.remove('oculto');
         btnSol.remove();
+        if (btnPaso) btnPaso.remove();
+      }
+      function unPaso() {
+        if (!btnPaso || !btnPaso.isConnected) return;
+        abrirVariables();
+        if (mostrados < 0) {
+          sol.grupos.flat().concat(sol.final).forEach((x) => x.classList.add('oculto'));
+          solucion.classList.remove('oculto');
+          mostrados = 0;
+        }
+        sol.grupos[mostrados].forEach((x) => x.classList.remove('oculto'));
+        mostrados++;
+        if (mostrados >= sol.grupos.length) verSolucion();
       }
       function siguiente() { estado.pos++; guardar(); mostrar(); window.scrollTo({ top: zona.offsetTop - 80, behavior: 'smooth' }); }
 
       zona.replaceChildren(
         el('div', { class: 'progreso' },
           el('span', {}, `Problema ${estado.pos + 1} de ${n}`),
-          el('span', { class: 'etiqueta-origen' }, `${a.corto} · #${num}`),
+          el('span', { class: 'etiqueta-origen' }, p.origen ? `${a.corto} · ${p.origen}` : `${a.corto} · #${num}`),
           el('button', { class: 'btn-texto', onclick: () => { if (confirm('¿Empezar una ronda nueva?')) { nuevaRonda(); mostrar(); } } },
             'Reiniciar ronda')),
         el('div', { class: 'barra' }, el('div', { style: `width:${(100 * estado.pos) / n}%` })),
         el('article', { class: 'problema' }, ...cuerpo),
-        el('div', { class: 'acciones' }, btnVars, btnSol,
+        el('div', { class: 'acciones' }, btnVars, btnPista, btnPaso, btnSol,
           el('button', { class: 'btn primario', onclick: siguiente },
             estado.pos + 1 < n ? 'Siguiente →' : 'Terminar ronda')),
         solucion,
-        el('p', { class: 'ayuda-teclas' }, 'Teclado: S = ver solución · N o → = siguiente'));
+        el('p', { class: 'ayuda-teclas' },
+          'Teclado: ' + [p.pista ? 'P = pista' : '', btnPaso ? 'L = un renglón más' : '',
+            'S = ver solución', 'N o → = siguiente'].filter(Boolean).join(' · ')));
 
       ESTUDIO.teclado = (ev) => {
-        if (ev.key === 's' || ev.key === 'S') verSolucion();
-        else if (ev.key === 'n' || ev.key === 'N' || ev.key === 'ArrowRight') siguiente();
+        const k = ev.key.toLowerCase();
+        if (k === 's') verSolucion();
+        else if (k === 'p') verPista();
+        else if (k === 'l') unPaso();
+        else if (k === 'n' || ev.key === 'ArrowRight') siguiente();
       };
     }
 
@@ -109,37 +157,70 @@
     mostrar();
   }
 
+  // Devuelve { partes, grupos, final }:
+  //   partes: lo que se pinta dentro del bloque de solución
+  //   grupos: renglones que se revelan juntos con "Un renglón más" (encabezados y separadores van con el renglón siguiente)
+  //   final:  lo que aparece al terminar (Q.E.D., nota)
   function pintarSolucion(s) {
-    const partes = [el('div', { class: 'tecnica' }, 'Técnica: ', el('strong', {}, s.tecnica))];
+    const partes = [];
+    const grupos = [];
+    const final = [];
+    if (s.tecnica) partes.push(el('div', { class: 'tecnica' }, 'Técnica: ', el('strong', {}, s.tecnica)));
 
-    if (s.contraejemplo) {
+    if ('respuesta' in s) {
+      const lineas = (s.evaluacion || []).map((l) => el('div', {}, l));
+      partes.push(el('div', { class: `veredicto ${s.respuesta ? 'si' : 'no'}` }, s.respuesta ? 'Verdadero' : 'Falso'),
+        el('div', { class: 'evaluacion' }, ...lineas));
+      // Sin "un renglón más": el veredicto ya es la respuesta
+    } else if (s.contraejemplo) {
+      const lineas = s.evaluacion.map((l) => el('div', {}, l));
+      const cierre = el('p', { class: 'qed' }, s.cierre || 'La fórmula no es tautología: queda refutada.');
       partes.push(
         el('div', { class: 'asignacion' }, ...Object.entries(s.contraejemplo).map(([v, val]) =>
-          el('span', { class: 'chip-valor' }, `${v} = ${val ? 'V' : 'F'}`))),
-        el('div', { class: 'evaluacion' }, ...s.evaluacion.map((l) => el('div', {}, l))),
-        el('p', { class: 'qed' }, 'La fórmula no es tautología: queda refutada.'));
+          el('span', { class: 'chip-valor' }, typeof val === 'boolean' ? `${v} = ${val ? 'V' : 'F'}` : `${v} = ${val}`))),
+        el('div', { class: 'evaluacion' }, ...lineas), cierre);
+      lineas.forEach((l) => grupos.push([l]));
+      final.push(cierre);
     } else {
-      const tabla = el('table', { class: 'demostracion' });
-      let separado = false;
+      const conOp = s.pasos.some((x) => x.op);
+      const cols = conOp ? 4 : 3;
+      const tabla = el('table', { class: 'demostracion' + (conOp ? ' con-op' : '') });
+      let separado = false, numero = 0, pendientes = [];
       s.pasos.forEach((x, i) => {
+        if (x.tipo === 'titulo') {
+          const tr = el('tr', { class: 'titulo' }, el('td', { colspan: cols }, x.f));
+          tabla.append(tr); pendientes.push(tr);
+          return;
+        }
         const esInicial = x.tipo === 'premisa' || x.tipo === 'negacion';
         if (!esInicial && !separado) {
           separado = true;
-          if (i > 0) tabla.append(el('tr', { class: 'separador' }, el('td', { colspan: 3 })));
+          if (i > 0 && s.pasos.slice(0, i).some((y) => y.tipo === 'premisa' || y.tipo === 'negacion')) {
+            const sep = el('tr', { class: 'separador' }, el('td', { colspan: cols }));
+            tabla.append(sep); pendientes.push(sep);
+          }
         }
-        tabla.append(el('tr', { class: [x.sub ? 'sub' : '', x.tipo || ''].join(' ').trim() },
-          el('td', { class: 'n' }, `${i + 1}.`),
+        numero++;
+        const tr = el('tr', { class: [x.sub ? 'sub' : '', x.tipo || ''].join(' ').trim() },
+          el('td', { class: 'n' }, `${numero}.`),
+          conOp ? el('td', { class: 'op' }, x.op || '') : null,
           el('td', { class: 'f' }, x.f),
-          el('td', { class: 'j' }, x.j)));
+          el('td', { class: 'j' }, x.j || ''));
+        tabla.append(tr);
+        grupos.push([...pendientes, tr]); pendientes = [];
       });
       partes.push(el('div', { class: 'tabla-scroll' }, tabla));
       const porContradiccion = s.pasos.some((x) => x.tipo === 'negacion');
-      partes.push(el('p', { class: 'qed' }, porContradiccion
+      const qed = el('p', { class: 'qed' }, s.cierre || (porContradiccion
         ? 'Suponer la negación de la conclusión lleva a F, así que la fórmula es tautología. Q.E.D.'
         : 'Q.E.D.'));
+      partes.push(qed); final.push(qed);
     }
-    if (s.nota) partes.push(el('p', { class: 'nota' }, s.nota));
-    return partes;
+    if (s.nota) {
+      const nota = el('p', { class: 'nota' }, s.nota);
+      partes.push(nota); final.push(nota);
+    }
+    return { partes, grupos, final };
   }
 
   ESTUDIO.motor('problemas', motorProblemas);

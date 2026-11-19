@@ -1,0 +1,61 @@
+/* Estilos para lo nuevo de los motores: pista, renglones con conector, títulos de sección,
+   verdadero/falso y diagramas de Venn. Se carga después de estilos.css; usa currentColor para
+   adaptarse solo al modo claro y oscuro. */
+:root {
+  --venn-sombra: #4f7fe0;
+  --venn-sobra: #e05252;
+  --venn-falta: #e0a030;
+  --venn-dif: #e0a030;
+  --ok: #2f9e5b;
+  --mal: #d64545;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --venn-sombra: #6f97ee; --venn-sobra: #f07070; --ok: #4cc27c; --mal: #f07070; }
+}
+
+/* ---------- Problemas ---------- */
+.pedido { margin: 0 0 .25rem; font-weight: 600; opacity: .8; }
+.pista {
+  margin: .75rem 0 0; padding: .6rem .8rem; border-radius: 8px; line-height: 1.5;
+  background: color-mix(in srgb, var(--venn-falta) 14%, transparent);
+  border-left: 4px solid var(--venn-falta);
+}
+table.demostracion td.op { white-space: nowrap; text-align: center; font-weight: 700; padding-right: .5rem; opacity: .85; }
+table.demostracion tr.titulo td {
+  padding-top: .9rem; font-weight: 700; font-size: .95em;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+}
+table.demostracion tr.titulo:first-child td { padding-top: .2rem; }
+.veredicto { display: inline-block; margin: .4rem 0 .6rem; padding: .2rem .8rem; border-radius: 999px; font-weight: 700; }
+.veredicto.si { background: color-mix(in srgb, var(--ok) 20%, transparent); color: var(--ok); }
+.veredicto.no { background: color-mix(in srgb, var(--mal) 20%, transparent); color: var(--mal); }
+
+/* ---------- Venn ---------- */
+.venn-uno { display: flex; justify-content: center; margin: .75rem 0; }
+.venn-uno svg { width: 100%; max-width: 420px; }
+.venn-dos { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin: .75rem 0; }
+.venn-dos figure { margin: 0; text-align: center; }
+.venn-dos svg { width: 100%; }
+.venn-dos figcaption { margin-top: .25rem; }
+@media (max-width: 560px) { .venn-dos { grid-template-columns: 1fr; } }
+
+svg.venn { display: block; height: auto; user-select: none; -webkit-user-select: none; }
+svg.venn.interactivo { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+svg.venn .venn-universo { fill: color-mix(in srgb, currentColor 4%, transparent); stroke: currentColor; stroke-opacity: .55; stroke-width: 1.5; }
+svg.venn .venn-lineas circle { fill: none; stroke: currentColor; stroke-width: 2; pointer-events: none; }
+svg.venn .venn-etiquetas text { fill: currentColor; font-size: 18px; font-weight: 700; font-style: italic; pointer-events: none; }
+svg.venn .region { pointer-events: none; }
+svg.venn .region.sombreada { fill: var(--venn-sombra); fill-opacity: .55; }
+svg.venn .region.sobra { fill: var(--venn-sobra); fill-opacity: .6; }
+svg.venn .region.diferencia { fill: var(--venn-dif); fill-opacity: .7; }
+svg.venn .venn-rayas-fondo { fill: color-mix(in srgb, var(--venn-falta) 18%, transparent); }
+svg.venn .venn-rayas-linea { stroke: var(--venn-falta); stroke-width: 3; }
+
+.venn-respuesta { margin-top: .5rem; }
+.venn-mensaje { min-height: 1.5em; margin: .5rem 0; font-weight: 600; }
+.venn-mensaje.ok { color: var(--ok); }
+.venn-mensaje.mal { color: var(--mal); }
+.formula-linea { font-family: inherit; white-space: nowrap; }
+
+/* Valores de un contraejemplo (A = {1}, B = Ø …) */
+.asignacion { display: flex; flex-wrap: wrap; gap: .4rem; margin: .4rem 0 .6rem; }
