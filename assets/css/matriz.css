@@ -1,0 +1,83 @@
+/* Motor de relaciones: matriz cero-uno, dígrafo, propiedades y clases. Se carga después de extras.css. */
+:root {
+  --g1: #4f7fe0; --g2: #e0a030; --g3: #2f9e5b; --g4: #c0569a; --g5: #8a63d2; --g6: #d06a3a; --g7: #3a9fb0; --g8: #7a8a2a; --g9: #a05a5a;
+}
+
+.rel-vista { display: flex; flex-wrap: wrap; gap: 18px 28px; justify-content: center; align-items: center; margin: 14px 0 4px; }
+.rel-lado { flex: none; max-width: 100%; overflow-x: auto; }
+.rel-pares { flex-basis: 100%; text-align: center; margin: 0; font-size: 1.02rem; overflow-wrap: anywhere; white-space: normal; }
+.rel-nombre { font-weight: 700; margin: 12px 0 0; font-family: var(--fuente-formula); }
+
+/* ---------- Matriz ---------- */
+table.rel-matriz { border-collapse: separate; border-spacing: 3px; font-family: var(--fuente-formula); }
+table.rel-matriz th { font-weight: 700; padding: 2px 6px; color: var(--tenue); font-size: .95rem; white-space: nowrap; }
+table.rel-matriz th[scope="row"] { text-align: right; }
+table.rel-matriz td { padding: 0; }
+.rel-matriz .celda {
+  display: grid; place-items: center; width: 36px; height: 36px; border-radius: 8px;
+  border: 1px solid var(--borde); background: var(--superficie); color: var(--tenue);
+  font: 600 1rem var(--fuente-formula); padding: 0;
+}
+.rel-matriz .celda.uno { background: var(--venn-sombra); border-color: var(--venn-sombra); color: #fff; }
+.rel-matriz.editable .celda { cursor: pointer; }
+.rel-matriz.editable .celda:hover { border-color: var(--acento); }
+.rel-matriz .celda.sobra { background: var(--venn-sobra); border-color: var(--venn-sobra); color: #fff; }
+.rel-matriz .celda.falta { border: 2px dashed var(--venn-falta); background: color-mix(in srgb, var(--venn-falta) 18%, transparent); color: var(--tinta); }
+@media (max-width: 560px) { .rel-matriz .celda { width: 30px; height: 30px; } }
+
+/* ---------- Dígrafo ---------- */
+svg.rel-digrafo { display: block; width: 260px; max-width: 100%; height: auto; color: var(--tinta); }
+svg.rel-digrafo .flechas path { fill: none; stroke: currentColor; stroke-width: 1.6; opacity: .8; }
+svg.rel-digrafo marker path { fill: currentColor; }
+svg.rel-digrafo .nodo circle { fill: var(--acento-suave); stroke: var(--acento); stroke-width: 1.5; }
+svg.rel-digrafo .nodo text { fill: currentColor; font: 600 14px var(--fuente-formula); }
+svg.rel-digrafo .titulo-col { fill: var(--tenue); font: italic 700 15px var(--fuente-formula); }
+
+/* ---------- Datos, resultados ---------- */
+.rel-info { margin: 8px 0; }
+.rel-info p { margin: 4px 0; white-space: normal; overflow-wrap: anywhere; }
+.rel-info p.formula-linea { font-family: var(--fuente-formula); font-size: 1.05rem; }
+.rel-datos { margin: 6px 0 2px; }
+.rel-datos summary { cursor: pointer; color: var(--acento); font-size: .92rem; }
+.rel-despues {
+  background: var(--superficie); border: 1px solid var(--acento); border-radius: var(--radio);
+  padding: 14px 20px; margin-bottom: 12px;
+}
+.rel-despues .nota:first-child { margin-top: 0; }
+
+/* ---------- Propiedades ---------- */
+.rel-props { display: grid; gap: 6px; margin: 16px auto 4px; max-width: 560px; }
+.rel-prop { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 6px 10px; border-radius: 10px; border: 1px solid transparent; }
+.rel-prop-nombre { font-weight: 600; }
+.rel-prop .seg { min-width: 52px; }
+.rel-prop.bien { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 9%, transparent); }
+.rel-prop.mal { border-color: var(--mal); background: color-mix(in srgb, var(--mal) 9%, transparent); }
+.rel-por { grid-column: 1 / -1; font-size: .92rem; color: var(--tenue); }
+.rel-por-linea { font-size: .92rem; color: var(--tenue); }
+.rel-tipos-elegir { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: center; margin: 14px 0 4px; }
+.chip.bien { outline: 2px solid var(--ok); }
+.chip.mal { outline: 2px solid var(--mal); }
+ul.rel-tipos { list-style: none; padding: 0; margin: 6px 0; }
+ul.rel-tipos li { margin: 3px 0; }
+ul.rel-tipos li.si { color: var(--ok); }
+ul.rel-tipos li.no { color: var(--tinta); }
+ul.rel-tipos li.no::first-letter { color: var(--mal); }
+ul.rel-pide { margin: 4px 0 4px; padding-left: 22px; font-weight: 600; }
+
+/* ---------- Clases (fichas de colores) ---------- */
+.rel-fichas { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 16px 0 8px; }
+.ficha {
+  position: relative; min-width: 48px; height: 44px; padding: 0 12px; border-radius: 12px; cursor: pointer;
+  border: 2px solid var(--borde); background: var(--superficie); font: 600 1.05rem var(--fuente-formula);
+}
+.ficha small { position: absolute; top: -8px; right: -8px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
+  font: 700 .72rem var(--fuente); background: var(--superficie); border: 1.5px solid currentColor; }
+.ficha.g1 { border-color: var(--g1); background: color-mix(in srgb, var(--g1) 22%, var(--superficie)); }
+.ficha.g2 { border-color: var(--g2); background: color-mix(in srgb, var(--g2) 22%, var(--superficie)); }
+.ficha.g3 { border-color: var(--g3); background: color-mix(in srgb, var(--g3) 22%, var(--superficie)); }
+.ficha.g4 { border-color: var(--g4); background: color-mix(in srgb, var(--g4) 22%, var(--superficie)); }
+.ficha.g5 { border-color: var(--g5); background: color-mix(in srgb, var(--g5) 22%, var(--superficie)); }
+.ficha.g6 { border-color: var(--g6); background: color-mix(in srgb, var(--g6) 22%, var(--superficie)); }
+.ficha.g7 { border-color: var(--g7); background: color-mix(in srgb, var(--g7) 22%, var(--superficie)); }
+.ficha.g8 { border-color: var(--g8); background: color-mix(in srgb, var(--g8) 22%, var(--superficie)); }
+.ficha.g9 { border-color: var(--g9); background: color-mix(in srgb, var(--g9) 22%, var(--superficie)); }

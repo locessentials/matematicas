@@ -1,6 +1,7 @@
 // Verifica el contenido de una unidad.
 // Uso: node tools/verificar.mjs logica
 //      node tools/verificar.mjs conjuntos
+//      node tools/verificar.mjs relaciones
 //
 // Lógica (tablas de verdad):
 //  - Tarjetas de equivalencias/inferencia: cada línea debe ser una equivalencia o tautología válida.
@@ -14,6 +15,12 @@
 //  - Contraejemplos: los conjuntos dados de verdad hacen falsa la afirmación.
 //  - Demostraciones: cada renglón se sigue del anterior con su conector (=, ⊆, ⟺, ⇒), y lo que demuestran
 //    las secciones juntas es exactamente lo que se pedía.
+// Relaciones (con todas las relaciones sobre conjuntos chicos):
+//  - Matrices: cada ejercicio se puede leer; los de "clases" son de equivalencia; cada "ejemplo" cumple lo que pide.
+//  - Problemas con "teorema": se prueba con todas las relaciones sobre conjuntos de 1 a 3 elementos (o se revisa el contraejemplo).
+//  - Problemas con "muestra": las propiedades que dice la solución se revisan con una muestra finita (p. ej. enteros de −8 a 8).
+//  - Problemas con "cuenta": se cuentan las relaciones de ese tipo.
+// Las tarjetas que tienen una etiqueta ("∧ respecto a ∨: …") o una cadena (a ≡ b ≡ c) se revisan por partes.
 // Algunas afirmaciones (las que dicen "existe" o "≠", o A × B = Ø ⟺ …) no se pueden revisar así;
 // se cuentan como "no verificables" y hay que revisarlas a mano. No revisa que el NOMBRE de la ley sea el correcto.
 import fs from 'node:fs';
@@ -28,7 +35,9 @@ const dir = path.join(raiz, unidad, 'datos');
 const actividades = [];
 const ctx = { ESTUDIO: { actividad: (a) => actividades.push(a), unidad: () => {} } };
 vm.createContext(ctx);
-vm.runInContext(fs.readFileSync(path.join(raiz, 'assets/js/conjuntos-expr.js'), 'utf8'), ctx, { filename: 'conjuntos-expr.js' });
+for (const lib of ['conjuntos-expr.js', 'relaciones.js']) {
+  vm.runInContext(fs.readFileSync(path.join(raiz, 'assets/js', lib), 'utf8'), ctx, { filename: lib });
+}
 for (const f of fs.readdirSync(dir).filter((f) => f.endsWith('.js')).sort()) {
   vm.runInContext(fs.readFileSync(path.join(dir, f), 'utf8'), ctx, { filename: f });
 }
@@ -38,7 +47,17 @@ const omitidos = [];
 const error = (donde, msg) => { errores++; console.log(`✗ ${donde}: ${msg}`); };
 
 if (unidad === 'conjuntos') verificarConjuntos(ctx.CONJUNTOS);
+else if (unidad === 'relaciones') verificarRelaciones(ctx.RELACIONES);
 else verificarLogica();
+
+// Una línea de tarjeta sin su etiqueta ("∧ respecto a ∨: p ∧ …" → "p ∧ …") y partida en una cadena (a ≡ b ≡ c → a ≡ b, b ≡ c)
+function piezas(linea, op) {
+  const m = linea.match(/^([^:{}]*?[a-záéíóú]{2,}[^:{}]*):\s+(.*)$/);
+  if (m) linea = m[2];
+  const xs = linea.split(` ${op} `);
+  if (xs.length <= 2 || /[⟺⇒↔→]/.test(linea)) return [linea];
+  return xs.slice(1).map((x, i) => `${xs[i]} ${op} ${x}`);
+}
 
 if (omitidos.length) {
   console.log(`\nNo verificables automáticamente (revísalos a mano):`);
@@ -124,7 +143,7 @@ function verificarLogica() {
     if (act.tipo === 'tarjetas') {
       for (const [k, t] of act.tarjetas.entries()) {
         if (!['Equivalencias', 'Inferencia'].includes(t.cat)) continue;
-        for (const linea of t.formula.split('\n')) {
+        for (const linea of t.formula.split('\n').flatMap((l) => piezas(l, '≡'))) {
           const donde = `${act.id} #${k + 1} ${t.nombre} [${linea}]`;
           try {
             if (linea.includes(',')) {
@@ -187,7 +206,7 @@ function verificarConjuntos(C) {
     if (act.tipo === 'tarjetas') {
       for (const [k, t] of act.tarjetas.entries()) {
         if (!CATS_LEYES.includes(t.cat) || t.verificar === false) continue;
-        for (const linea of t.formula.split('\n')) {
+        for (const linea of t.formula.split('\n').flatMap((l) => piezas(l, '='))) {
           const donde = `${act.id} #${k + 1} ${t.nombre} [${linea}]`;
           try {
             if (!C.valida(linea)) error(donde, 'no es válida');
@@ -358,4 +377,131 @@ function verificarConjuntos(C) {
   // Forma del conjunto en "x ∈ CONJUNTO" (para comparar con los lados de la tesis)
   function textoDe(paso) { return { e: paso.n.e.b }; }
   function texto(e) { return { e }; }
+}
+
+// =====================================================================
+// Relaciones
+// =====================================================================
+function verificarRelaciones(Rel) {
+  // Todas las relaciones sobre X (2^(n²) de ellas)
+  const cache = new Map();
+  function todas(X) {
+    const clave = X.join();
+    if (cache.has(clave)) return cache.get(clave);
+    const ps = X.flatMap((a) => X.map((b) => [a, b]));
+    const rs = [];
+    for (let m = 0; m < 2 ** ps.length; m++) rs.push(Rel.relacion(X, X, ps.filter((_, i) => m & (1 << i))));
+    cache.set(clave, rs);
+    return rs;
+  }
+  // 'simetrica(R ∪ S)', 'R ⊆ S', 'R = R⁻¹', 'a ⟺ b'
+  function predicado(s) {
+    s = s.trim();
+    const lados = s.split('⟺');
+    if (lados.length === 2) { const a = predicado(lados[0]), b = predicado(lados[1]); return (env) => a(env) === b(env); }
+    let m = s.match(/^(\w+)\((.*)\)$/);
+    if (m) {
+      const [, nombre, expr] = m;
+      return (env) => {
+        const p = Rel.propiedades(Rel.evaluar(expr, env));
+        if (nombre in p) return p[nombre].ok;
+        const t = Rel.tipos(p);
+        if (nombre in t) return t[nombre];
+        throw new Error(`propiedad desconocida "${nombre}"`);
+      };
+    }
+    m = s.match(/^(.*?)\s*(⊆|=)\s*(.*)$/);
+    if (m) return (env) => {
+      const a = Rel.evaluar(m[1], env), b = Rel.evaluar(m[3], env);
+      return m[2] === '=' ? Rel.igual(a, b) : Rel.contenida(a, b);
+    };
+    throw new Error(`no se entiende "${s}"`);
+  }
+  const textoEnv = (env, vs) => `X = ${Rel.conjuntoTexto(env.X)}, ` + vs.map((v) => `${v} = ${Rel.texto(env[v])}`).join(', ');
+
+  for (const act of actividades) {
+    if (act.tipo === 'matriz') {
+      for (const ej of act.ejercicios) {
+        const donde = `${act.id}/${ej.id}`;
+        try {
+          if (ej.modo === 'operar') {
+            const env = {};
+            for (const [k, d] of Object.entries(ej.datos)) env[k] = Rel.deDatos(d, ej.X);
+            env.X = ej.X ? Rel.leerConjunto(ej.X) : Object.values(env)[0].X;
+            Rel.evaluar(ej.expr, env);
+          } else if (ej.modo === 'ejemplo') {
+            const X = Rel.leerConjunto(ej.X);
+            const malos = Rel.revisarPide(Rel.relacion(X, X, ej.ejemplo), ej.pide).filter((r) => !r.ok);
+            if (malos.length) error(donde, `el ejemplo no cumple: ${malos.map((r) => `${r.texto} (${r.por})`).join('; ')}`);
+          } else {
+            const R = Rel.deDatos(ej, ej.X);
+            if (ej.regla) for (const a of R.X) for (const b of R.Y) if (typeof ej.regla(a, b) !== 'boolean') throw new Error(`la regla no da V/F en (${a}, ${b})`);
+            if (ej.modo === 'propiedades' || ej.modo === 'clases') {
+              const p = Rel.propiedades(R);
+              if (ej.modo === 'clases' && !Rel.tipos(p).equivalencia) error(donde, 'se piden clases, pero no es de equivalencia');
+            }
+          }
+          revisados++;
+        } catch (e) { error(donde, e.message); }
+      }
+    }
+
+    if (act.tipo === 'problemas') {
+      for (const p of act.problemas) {
+        const donde = `${act.id}/${p.id}`;
+        let algo = false;
+        try {
+          for (const m of [].concat(p.muestra || [])) {
+            algo = true;
+            const R = Rel.desdeRegla(m.dominio, m.dominio, m.regla);
+            const props = Rel.propiedades(R);
+            for (const [k, dice] of Object.entries(m.propiedades)) {
+              if (!(k in props)) throw new Error(`propiedad desconocida "${k}"`);
+              if (props[k].ok !== dice) {
+                error(donde + (m.k != null ? ` (k = ${m.k})` : ''),
+                  `dice ${k}: ${dice ? 'sí' : 'no'}, pero con la muestra ${dice ? `falla: ${props[k].por}` : 'no aparece ningún contraejemplo'}`);
+              }
+            }
+          }
+          if (p.teorema) {
+            algo = true;
+            const hip = p.teorema.hip.map(predicado), tesis = predicado(p.teorema.tesis);
+            const vs = ['R', 'S', 'T'].filter((v) => [...p.teorema.hip, p.teorema.tesis].some((x) => x.includes(v)));
+                    const hipOk = (env) => hip.every((h) => h(env));
+            const ce = p.solucion.contraejemplo;
+            if (ce) {
+              const env = { X: Rel.leerConjunto(ce.X) };
+              for (const v of vs) env[v] = Rel.relacion(env.X, env.X, ce[v] || 'Ø');
+              if (!hipOk(env)) error(donde, `el contraejemplo no cumple las hipótesis (${textoEnv(env, vs)})`);
+              else if (tesis(env)) error(donde, `el contraejemplo sí cumple la tesis (${textoEnv(env, vs)})`);
+            } else {
+              const max = vs.length >= 3 ? 2 : 3;
+              let falla = null;
+              buscar: for (let n = 1; n <= max; n++) {
+                const X = Array.from({ length: n }, (_, i) => i + 1), rs = todas(X);
+                const combos = vs.reduce((acc) => acc.flatMap((c) => rs.map((r) => [...c, r])), [[]]);
+                for (const c of combos) {
+                  const env = { X };
+                  vs.forEach((v, i) => (env[v] = c[i]));
+                  if (hipOk(env) && !tesis(env)) { falla = textoEnv(env, vs); break buscar; }
+                }
+              }
+              if (falla) error(donde, `el teorema es falso; contraejemplo: ${falla}`);
+            }
+          }
+          if (p.cuenta) {
+            algo = true;
+            const X = Rel.leerConjunto(p.cuenta.X);
+            const n = todas(X).filter((r) => {
+              const pr = Rel.propiedades(r);
+              return p.cuenta.que in pr ? pr[p.cuenta.que].ok : Rel.tipos(pr)[p.cuenta.que];
+            }).length;
+            if (n !== p.cuenta.n) error(donde, `dice ${p.cuenta.n}, pero hay ${n}`);
+          }
+          if (algo) revisados++;
+          else omitidos.push(`${donde} (revisar a mano)`);
+        } catch (e) { error(donde, e.message); }
+      }
+    }
+  }
 }
