@@ -282,7 +282,7 @@
           if (revisado) return;
           tiposMarcados.has(k) ? tiposMarcados.delete(k) : tiposMarcados.add(k);
           ev.currentTarget.setAttribute('aria-pressed', String(tiposMarcados.has(k)));
-          ev.currentTarget.classList.remove('bien', 'mal');
+          ev.currentTarget.classList.remove('bien', 'mal', 'aplica', 'no-aplica');
         } }, txt));
         const explicarTipos = () => {
           const son = Rel.TIPOS.filter(([k]) => ti[k]).map(([, txt]) => txt.toLowerCase());
@@ -314,9 +314,11 @@
           chips.forEach((c, i) => {
             const k = Rel.TIPOS[i][0];
             if (mostrarRespuesta) { if (ti[k]) tiposMarcados.add(k); else tiposMarcados.delete(k); c.setAttribute('aria-pressed', String(ti[k])); }
-            const bien = tiposMarcados.has(k) === ti[k];
-            if (!bien) tiposMal++;
-            c.classList.remove('bien', 'mal'); c.classList.add(bien ? 'bien' : 'mal');
+            const picked = tiposMarcados.has(k);
+            const applies = Boolean(ti[k]);
+            if (picked !== applies) tiposMal++;
+            c.classList.remove('bien', 'mal', 'aplica', 'no-aplica');
+            c.classList.add(applies ? 'aplica' : 'no-aplica');
           });
           mostrarDespues(explicarTipos(), nota);
           if (mostrarRespuesta) decir(['', 'Estas son las respuestas.']);

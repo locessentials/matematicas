@@ -55,8 +55,14 @@ svg.rel-digrafo .titulo-col { fill: var(--tenue); font: italic 700 15px var(--fu
 .rel-por { grid-column: 1 / -1; font-size: .92rem; color: var(--tenue); }
 .rel-por-linea { font-size: .92rem; color: var(--tenue); }
 .rel-tipos-elegir { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: center; margin: 14px 0 4px; }
-.chip.bien { outline: 2px solid var(--ok); }
-.chip.mal { outline: 2px solid var(--mal); }
+.rel-tipos-elegir .chip[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--venn-sombra) 20%, transparent);
+  border-color: var(--venn-sombra);
+  color: var(--venn-sombra);
+  font-weight: 600;
+}
+.chip.aplica { outline: 2px solid var(--ok); }
+.chip.no-aplica { outline: 2px solid var(--mal); }
 ul.rel-tipos { list-style: none; padding: 0; margin: 6px 0; }
 ul.rel-tipos li { margin: 3px 0; }
 ul.rel-tipos li.si { color: var(--ok); }
