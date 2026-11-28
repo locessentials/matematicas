@@ -20,6 +20,13 @@
 //  - Problemas con "teorema": se prueba con todas las relaciones sobre conjuntos de 1 a 3 elementos (o se revisa el contraejemplo).
 //  - Problemas con "muestra": las propiedades que dice la solución se revisan con una muestra finita (p. ej. enteros de −8 a 8).
 //  - Problemas con "cuenta": se cuentan las relaciones de ese tipo.
+// Funciones:
+//  - Funciones finitas (flechas): cada ejercicio se puede leer; cada "ejemplo" cumple lo que pide; las expresiones se calculan.
+//  - Tarjetas y problemas con "prueba": la afirmación se evalúa con muchos valores (reales k/24 entre −5 y 5 y algunos
+//    irracionales, enteros de −6 a 6, bits). Si se demuestra, tiene que salir siempre verdadera; si se refuta, el contraejemplo
+//    tiene que hacerla falsa.
+//  - Problemas con "numerico": cada renglón se evalúa como número (piso, techo, + − · /, potencias, f(…)).
+//  - Problemas con "muestra": inyectiva / sobre se revisan con una muestra finita del dominio.
 // Las tarjetas que tienen una etiqueta ("∧ respecto a ∨: …") o una cadena (a ≡ b ≡ c) se revisan por partes.
 // Algunas afirmaciones (las que dicen "existe" o "≠", o A × B = Ø ⟺ …) no se pueden revisar así;
 // se cuentan como "no verificables" y hay que revisarlas a mano. No revisa que el NOMBRE de la ley sea el correcto.
@@ -35,7 +42,7 @@ const dir = path.join(raiz, unidad, 'datos');
 const actividades = [];
 const ctx = { ESTUDIO: { actividad: (a) => actividades.push(a), unidad: () => {} } };
 vm.createContext(ctx);
-for (const lib of ['conjuntos-expr.js', 'relaciones.js']) {
+for (const lib of ['conjuntos-expr.js', 'relaciones.js', 'funciones.js']) {
   vm.runInContext(fs.readFileSync(path.join(raiz, 'assets/js', lib), 'utf8'), ctx, { filename: lib });
 }
 for (const f of fs.readdirSync(dir).filter((f) => f.endsWith('.js')).sort()) {
@@ -48,6 +55,7 @@ const error = (donde, msg) => { errores++; console.log(`✗ ${donde}: ${msg}`); 
 
 if (unidad === 'conjuntos') verificarConjuntos(ctx.CONJUNTOS);
 else if (unidad === 'relaciones') verificarRelaciones(ctx.RELACIONES);
+else if (unidad === 'funciones') verificarFunciones(ctx.FUNCIONES);
 else verificarLogica();
 
 // Una línea de tarjeta sin su etiqueta ("∧ respecto a ∨: p ∧ …" → "p ∧ …") y partida en una cadena (a ≡ b ≡ c → a ≡ b, b ≡ c)
@@ -497,6 +505,184 @@ function verificarRelaciones(Rel) {
               return p.cuenta.que in pr ? pr[p.cuenta.que].ok : Rel.tipos(pr)[p.cuenta.que];
             }).length;
             if (n !== p.cuenta.n) error(donde, `dice ${p.cuenta.n}, pero hay ${n}`);
+          }
+          if (algo) revisados++;
+          else omitidos.push(`${donde} (revisar a mano)`);
+        } catch (e) { error(donde, e.message); }
+      }
+    }
+  }
+}
+
+// =====================================================================
+// Funciones
+// =====================================================================
+function verificarFunciones(F) {
+  const { piso, techo } = F;
+
+  // ---------- Valores de prueba ----------
+  const REALES = [
+    ...Array.from({ length: 241 }, (_, k) => (k - 120) / 24),
+    Math.SQRT2, -Math.SQRT2, Math.PI, -Math.PI, Math.E, -Math.E, 0.001, -0.001, 1 / 7, -1 / 7, 2.999, -2.999, 100.5, -100.5, 1e6 + 0.25,
+  ];
+  const TIPOS = {
+    real: REALES,
+    positivo: REALES.filter((x) => x > 0),
+    entero: Array.from({ length: 13 }, (_, k) => k - 6),
+    natural: Array.from({ length: 13 }, (_, k) => k),
+    bit: [0, 1],
+  };
+  function* combinaciones(vars) {
+    const ks = Object.keys(vars);
+    const listas = ks.map((k) => { if (!TIPOS[vars[k]]) throw new Error(`tipo desconocido "${vars[k]}"`); return TIPOS[vars[k]]; });
+    const idx = ks.map(() => 0);
+    for (;;) {
+      yield Object.fromEntries(ks.map((k, j) => [k, listas[j][idx[j]]]));
+      let j = 0;
+      while (j < ks.length && ++idx[j] === listas[j].length) idx[j++] = 0;
+      if (j === ks.length) return;
+    }
+  }
+  const muestraTexto = (v) => Object.entries(v).map(([k, x]) => `${k} = ${+x.toFixed(6)}`).join(', ');
+  // ¿falla en algún punto? → texto del punto, o null si siempre se cumple
+  function buscaFalla(pr) {
+    for (const v of combinaciones(pr.vars)) if (!pr.f(v)) return muestraTexto(v);
+    return null;
+  }
+
+  // ---------- Evaluador numérico: ⌊ ⌋ ⌈ ⌉ ( ) + − · × * / ^ ² ³ √ números f(…) ----------
+  function numero(texto, f) {
+    const s = texto.replace(/−/g, '-').replace(/\s+/g, '');
+    let i = 0;
+    const falla = (m) => { throw new Error(`${m} en "${texto}"`); };
+    const ver = () => s[i];
+    function suma() {
+      let a = producto();
+      while (ver() === '+' || ver() === '-') { const op = s[i++]; const b = producto(); a = op === '+' ? a + b : a - b; }
+      return a;
+    }
+    function producto() {
+      let a = unario();
+      while ('·×*/'.includes(ver() || '#')) { const op = s[i++]; const b = unario(); a = op === '/' ? a / b : a * b; }
+      return a;
+    }
+    function unario() { if (ver() === '-') { i++; return -unario(); } return potencia(); }
+    function potencia() {
+      const a = primario();
+      if (ver() === '²') { i++; return a * a; }
+      if (ver() === '³') { i++; return a ** 3; }
+      if (ver() === '^') { i++; return a ** unario(); }
+      return a;
+    }
+    function cerrar(c) { if (s[i++] !== c) falla(`falta "${c}"`); }
+    function primario() {
+      const c = ver();
+      if (c === '(') { i++; const v = suma(); cerrar(')'); return v; }
+      if (c === '⌊') { i++; const v = suma(); cerrar('⌋'); return piso(v); }
+      if (c === '⌈') { i++; const v = suma(); cerrar('⌉'); return techo(v); }
+      if (c === '√') { i++; return Math.sqrt(potencia()); }
+      if (c === 'f' && s[i + 1] === '(') {
+        if (!f) falla('f(…) sin una función f en el problema');
+        i += 2; const v = suma(); cerrar(')'); return f(v);
+      }
+      const m = s.slice(i).match(/^\d+(\.\d+)?/);
+      if (m) { i += m[0].length; return Number(m[0]); }
+      falla(`no se entiende "${s.slice(i)}"`);
+    }
+    const v = suma();
+    if (i !== s.length) falla(`sobra "${s.slice(i)}"`);
+    return v;
+  }
+  const casi = (a, b) => Math.abs(a - b) <= 1e-9 * (1 + Math.abs(a) + Math.abs(b));
+
+  for (const act of actividades) {
+    // ---------- Tarjetas ----------
+    if (act.tipo === 'tarjetas') {
+      for (const [k, t] of act.tarjetas.entries()) {
+        if (!t.prueba) continue;
+        const donde = `${act.id} #${k + 1} ${t.nombre}`;
+        try {
+          const falla = buscaFalla(t.prueba);
+          if (falla) error(donde, `no se cumple con ${falla}`);
+          revisados++;
+        } catch (e) { error(donde, e.message); }
+      }
+    }
+
+    // ---------- Funciones finitas ----------
+    if (act.tipo === 'flechas') {
+      for (const ej of act.ejercicios) {
+        const donde = `${act.id}/${ej.id}`;
+        try {
+          if (ej.modo === 'clasificar') F.propiedades(F.asignacion(ej.f));
+          else if (ej.modo === 'ejemplo') {
+            const f = F.asignacion({ A: ej.A, B: ej.B, pares: ej.ejemplo });
+            const malos = F.revisarPide(f, ej.pide).filter((r) => !r.ok);
+            if (malos.length) error(donde, `el ejemplo no cumple: ${malos.map((r) => `${r.texto} (${r.por})`).join('; ')}`);
+          } else if (ej.modo === 'calcular' || ej.modo === 'imagen') {
+            const env = {};
+            for (const [k, d] of Object.entries(ej.datos)) env[k] = F.asignacion(d);
+            if (ej.modo === 'imagen') F.evaluarImagen(ej.expr, env);
+            else { try { F.evaluar(ej.expr, env); } catch (e) { if (!(e instanceof F.SinResultado)) throw e; } }
+          } else throw new Error(`modo desconocido "${ej.modo}"`);
+          revisados++;
+        } catch (e) { error(donde, e.message); }
+      }
+    }
+
+    // ---------- Problemas ----------
+    if (act.tipo === 'problemas') {
+      for (const p of act.problemas) {
+        const donde = `${act.id}/${p.id}`;
+        const s = p.solucion;
+        let algo = false;
+        try {
+          if (p.prueba) {
+            algo = true;
+            if (s.contraejemplo) {
+              const v = Object.fromEntries(Object.entries(s.contraejemplo).map(([k, x]) => [k, typeof x === 'number' ? x : numero(String(x))]));
+              for (const k of Object.keys(p.prueba.vars)) if (!(k in v)) error(donde, `el contraejemplo no da valor a ${k}`);
+              if (p.prueba.f(v)) error(donde, `el contraejemplo (${muestraTexto(v)}) NO hace falsa la afirmación`);
+            } else if (s.respuesta === false) {
+              if (!buscaFalla(p.prueba)) error(donde, 'dice Falso, pero no se encontró ningún contraejemplo');
+            } else {
+              const falla = buscaFalla(p.prueba);
+              if (falla) error(donde, `se "demuestra", pero falla con ${falla}`);
+            }
+          }
+          if (p.numerico) {
+            algo = true;
+            let anterior = null;
+            for (const [k, x] of (s.pasos || []).entries()) {
+              if (x.tipo === 'titulo') { anterior = null; continue; }
+              if (x.libre) { anterior = null; continue; }
+              const aqui = `${donde} renglón ${k + 1}`;
+              const vals = x.f.split(' = ').map((t) => numero(t, p.f));
+              vals.slice(1).forEach((v, j) => { if (!casi(v, vals[0])) error(aqui, `"${x.f.split(' = ')[j + 1]}" vale ${v}, no ${vals[0]}`); });
+              if (x.op === '=' && anterior !== null && !casi(vals[0], anterior)) error(aqui, `empieza en ${vals[0]}, pero el renglón anterior valía ${anterior}`);
+              anterior = vals[vals.length - 1];
+            }
+          }
+          for (const m of [].concat(p.muestra || [])) {
+            algo = true;
+            const clave = (v) => (Array.isArray(v) ? JSON.stringify(v) : String(v));
+            const valores = new Map();
+            let choque = null;
+            for (const x of m.dominio) {
+              const y = clave(Array.isArray(x) ? m.f(...x) : m.f(x));
+              if (valores.has(y) && !choque) choque = [valores.get(y), x, y];
+              if (!valores.has(y)) valores.set(y, x);
+            }
+            if (m.inyectiva === true && choque) error(donde, `dice inyectiva, pero f(${clave(choque[0])}) = f(${clave(choque[1])}) = ${choque[2]}`);
+            if (m.inyectiva === false && !choque) error(donde, 'dice que no es inyectiva, pero en la muestra no hay dos con la misma imagen');
+            if (m.sobre && m.sobre.en) {
+              const faltan = m.sobre.en.filter((y) => !valores.has(clave(y)));
+              if (faltan.length) error(donde, `dice sobre, pero en la muestra nadie va a ${faltan.slice(0, 5).join(', ')}`);
+            }
+            if (m.sobre === false) {
+              if (m.falta == null) error(donde, 'dice que no es sobre: falta "falta" (un valor al que no llega nadie)');
+              for (const y of [].concat(m.falta)) if (valores.has(clave(y))) error(donde, `dice que nadie va a ${y}, pero f(${clave(valores.get(clave(y)))}) = ${y}`);
+            }
           }
           if (algo) revisados++;
           else omitidos.push(`${donde} (revisar a mano)`);

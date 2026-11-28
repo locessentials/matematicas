@@ -1,0 +1,45 @@
+/* Unidad de funciones: diagramas de flechas (flechas.js), gráficas escalonadas (grafica.js)
+   y la respuesta corta de problemas.js. Se carga después de extras.css y matriz.css. */
+
+/* ---------- Respuesta corta ("Sí es sobre", "No es función") ---------- */
+.veredicto.neutro { background: color-mix(in srgb, var(--acento) 16%, transparent); color: var(--acento); }
+
+/* ---------- Diagrama de flechas ---------- */
+.fn-vista { display: flex; justify-content: center; margin: 12px 0 4px; overflow-x: auto; }
+svg.fn-diagrama { display: block; width: 100%; height: auto; color: var(--tinta); }
+svg.fn-diagrama .fn-conjunto { fill: color-mix(in srgb, var(--acento) 6%, transparent); stroke: var(--borde); stroke-width: 1.5; }
+svg.fn-diagrama .fn-titulo { fill: var(--tenue); font: italic 700 14px var(--fuente-formula); }
+svg.fn-diagrama .fn-flechas path { fill: none; stroke: currentColor; stroke-width: 1.6; opacity: .8; }
+svg.fn-diagrama marker path { fill: currentColor; }
+svg.fn-diagrama .fn-nodo rect { fill: var(--acento-suave); stroke: var(--acento); stroke-width: 1.5; }
+svg.fn-diagrama .fn-nodo text { fill: currentColor; font: 600 14px var(--fuente-formula); }
+svg.fn-diagrama .fn-nodo.marcado rect { fill: var(--venn-falta); stroke: var(--venn-falta); }
+
+.fn-datos { display: flex; flex-wrap: wrap; gap: 8px 28px; justify-content: center; margin: 10px 0; }
+.fn-figura { margin: 0; text-align: center; min-width: 200px; max-width: 100%; }
+.fn-figura figcaption { margin-top: 2px; white-space: normal; overflow-wrap: anywhere; font-family: var(--fuente-formula); }
+
+/* ---------- Elegir imágenes ---------- */
+.fn-constructor { margin: 12px 0 4px; }
+.fn-constructor.apagada { opacity: .35; pointer-events: none; }
+.fn-filas { display: grid; gap: 6px; justify-content: center; margin: 0 auto; }
+.fn-fila { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 4px 8px; border-radius: 10px; border: 1px solid transparent; }
+.fn-fila.bien { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 9%, transparent); }
+.fn-fila.mal { border-color: var(--mal); background: color-mix(in srgb, var(--mal) 9%, transparent); }
+.fn-etiqueta { min-width: 92px; text-align: right; font-family: var(--fuente-formula); font-weight: 600; }
+.rel-prop.apagada { opacity: .4; }
+.btn[aria-pressed="true"] { border-color: var(--acento); background: var(--acento-suave); }
+
+/* Fichas de imagen: sobra / falta */
+.ficha.sobra { border-color: var(--venn-sobra); background: color-mix(in srgb, var(--venn-sobra) 25%, var(--superficie)); }
+.ficha.falta { border: 2px dashed var(--venn-falta); }
+
+/* ---------- Gráficas ---------- */
+.grafica-sol { display: flex; justify-content: center; margin: 12px 0; }
+svg.grafica { display: block; width: 100%; height: auto; color: var(--tinta); }
+svg.grafica .gr-rejilla { stroke: currentColor; stroke-opacity: .1; stroke-width: 1; }
+svg.grafica .gr-eje { stroke: currentColor; stroke-opacity: .6; stroke-width: 1.4; }
+svg.grafica .gr-num { fill: var(--tenue); font: 12px var(--fuente-formula); }
+svg.grafica .gr-tramo { stroke: var(--venn-sombra); stroke-width: 3; stroke-linecap: butt; }
+svg.grafica .gr-cerrado { fill: var(--venn-sombra); }
+svg.grafica .gr-abierto { fill: var(--superficie, #fff); stroke: var(--venn-sombra); stroke-width: 2; }

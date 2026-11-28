@@ -26,12 +26,17 @@ assets/
   js/relaciones.js      finite relations: operations, properties, types, classes (shared by matriz.js and the checker)
   js/matriz.js          0-1 matrix + digraph engine (build, operate, properties, give an example, classes)
   css/matriz.css        styles for matriz.js
+  js/funciones.js       finite functions: properties, composition, inverse, images; also the globals piso, techo, casi, enteros, parejas
+  js/flechas.js         arrow-diagram engine (classify, give an example, compose/invert, image and inverse image)
+  js/grafica.js         step-function graphs for problem solutions (floor/ceiling)
+  css/funciones.css     styles for flechas.js, grafica.js and short answers
 logica/
   index.html            unit page: loads the engines, then the data files (script order = tab order)
   datos/*.js            the content: each file registers one activity with ESTUDIO.actividad({...})
 conjuntos/              same structure as logica/
 relaciones/             same structure
-tools/verificar.mjs     checks the content of a unit (truth tables / Venn regions)
+funciones/              same structure
+tools/verificar.mjs     checks the content of a unit (truth tables / Venn regions / samples)
 ```
 
 The engines don't know anything about logic or sets. A unit is just data, so new units reuse everything.
@@ -82,9 +87,11 @@ ESTUDIO.actividad({ id: 'mezcla', titulo: 'Mezcla', corto: 'Mezcla', tipo: 'mezc
 | step `op` | Connector at the start of the row (`=`, `⊆`, `⟺`, `⇒`); shown as its own column |
 | step `tipo: 'titulo'` | Full-width heading row, e.g. "(⊆) Primera contención" |
 | `solucion.contraejemplo` | `{ p: false }` for logic or `{ A: '{1}', B: 'Ø' }` for sets, plus `evaluacion: [...]` |
-| `solucion.respuesta` | `true`/`false` for true-or-false questions, plus `evaluacion: [...]` |
-| `solucion.cierre` | Replaces the closing line ("Q.E.D.", "queda refutada") |
-| `tesis`, `hipotesis`, `datos`, `verificar: false` | Only used by the checker (see below) |
+| `solucion.respuesta` | `true`/`false` for true-or-false questions, plus `evaluacion: [...]`. A string gives a short answer instead ("No es sobre"), colored with `tono: 'si'` or `'no'` |
+| `solucion.evaluacion` alone | Explanation only, revealed one line at a time (used with `grafica`) |
+| `solucion.grafica` | `{ f: (x) => piso(2 * x), de: -3, a: 3, y?: [-6, 6] }`: draws a step function (needs `grafica.js`) |
+| `solucion.cierre` | Replaces the closing line ("Q.E.D.", "queda refutada"); `false` removes it |
+| `tesis`, `hipotesis`, `datos`, `verificar: false`, `prueba`, `numerico`, `muestra`, `f` | Only used by the checker (see below) |
 
 Every problem with more than one solution row gets a **Un renglón más** button (key `L`) that reveals the solution one row at a time.
 
@@ -120,6 +127,23 @@ ESTUDIO.actividad({ id: 'operar', titulo: 'Representar y operar', corto: 'Operar
 - Optional: `origen`, `nota`, `pedido`, `dibujo: false` (no digraph), `verMatriz: false` (no matrix or digraph, for long element names).
 - Types use the course's definitions: orden = antisymmetric + transitive; orden total = orden + trichotomy, which rules out any pair (x, x), so ≤ is not total here. Most textbooks call that a *strict* total order.
 
+### Arrow-diagram activities (functions)
+
+```js
+ESTUDIO.actividad({ id: 'finitas', titulo: 'Funciones finitas', corto: 'Funciones finitas', tipo: 'flechas', ejercicios: [
+  { id: 'c1', modo: 'clasificar', f: { A: '{a, b, c}', B: '{1, 2, 3}', pares: '{(a, 2), (b, 3), (c, 1)}' } },
+  { id: 'e1', modo: 'ejemplo', A: '{1, 2, 3}', B: '{a, b, c, d}', pide: { inyectiva: true, sobre: false }, ejemplo: '{(1, a), (2, b), (3, c)}' },
+  { id: 'k1', modo: 'calcular', datos: { f: { … }, g: { … } }, expr: 'f ∘ g' },
+  { id: 'i1', modo: 'imagen', datos: { f: { … } }, expr: 'f⁻¹({1, 2})' },
+] });
+```
+
+- Without `B`, the codomain is `A`. The assignment does not have to be a function: "clasificar" asks whether it is.
+- `expr` understands function names, `∘` (in `f ∘ g`, g goes first), `⁻¹` and parentheses. If the result does not exist (inverse of a non-bijection, or a composition that is not defined), the right answer is the "No existe" button.
+- `pide` keys: `inyectiva sobre biyectiva`. "Give an example" accepts any correct function.
+- Optional: `origen`, `enunciado`, `pedido`, `nota`.
+- The page must load `relaciones.js`, `funciones.js` and `flechas.js`.
+
 ### Writing set expressions
 
 `conjuntos-expr.js` reads: `A B C … U Ø`, `∩ ∪ \ ∆ × ᶜ`, `{1, 2}`, `{x : …}`, `2ᴬ`, `|A|`, and statements with `∈ ∉ ⊆ ⊂ ⊇ = ≠`, joined with `y`, `o`, `¬`, `⇒`, `⟺`, `V`, `F`. Mixing different operations (or `y` with `o`) needs parentheses: `(A ∩ B) ∪ C`. Pairs are `(x, y)`.
@@ -130,6 +154,7 @@ ESTUDIO.actividad({ id: 'operar', titulo: 'Representar y operar', corto: 'Operar
 node tools/verificar.mjs logica
 node tools/verificar.mjs conjuntos
 node tools/verificar.mjs relaciones
+node tools/verificar.mjs funciones
 ```
 
 For **logica** it uses truth tables to check four things:
@@ -153,6 +178,12 @@ For **relaciones** it checks:
 - problems with `teorema: { hip: ['simetrica(R)'], tesis: 'simetrica(R⁻¹)' }`: tried against every relation (or pair of relations) on sets of 1 to 3 elements; when the solution is a counterexample, that the counterexample works
 - problems with `muestra: { dominio, regla, propiedades }`: each yes/no in the solution is checked on a finite sample (e.g. integers −8 to 8). A "no" must show up in the sample; a "yes" can only be supported, not proved, this way
 - problems with `cuenta: { X, que, n }`: counts the relations of that kind
+
+For **funciones** it checks:
+- every arrow-diagram exercise can be read; every `ejemplo` satisfies its `pide`; every `expr` can be computed (or correctly has no result)
+- `prueba: { vars: { x: 'real', n: 'entero' }, f: ({ x, n }) => … }` on a card or problem: evaluated on many values (reals k/24 from −5 to 5 plus some irrationals, integers −6 to 6; also `positivo`, `natural`, `bit`). A proof must hold everywhere; a `contraejemplo` (values like `'1/2'`) must make it false; `respuesta: false` must fail somewhere
+- `numerico: true`: every solution row is evaluated as a number (`⌊ ⌋ ⌈ ⌉ + − · / ² √` and `f(…)` with the problem's `f`). The parts joined by ` = ` must agree, and a row with `op: '='` must start where the previous one ended. Text rows need `libre: true`
+- `muestra: { dominio, f, inyectiva?, sobre?: { en } | false, falta? }`: one-to-one and onto checked on a finite sample. A "no" for one-to-one must show a collision; a "no" for onto needs a value in `falta` that nobody reaches in the sample
 
 Flashcard lines with a label (`∧ respecto a ∨: …`) or a chain (`a ≡ b ≡ c`, `A = B = C`) are checked piece by piece.
 

@@ -10,6 +10,9 @@
 //       tipo: 'premisa' | 'supuesto' | 'negacion' | 'titulo' (renglón de encabezado que ocupa toda la fila)
 //   { tecnica, contraejemplo: { p: false } o { A: '{1}' }, evaluacion: [...], nota?, cierre? }
 //   { respuesta: true | false, evaluacion: [...], nota? }   (preguntas de verdadero o falso)
+//   { respuesta: 'texto', tono?: 'si' | 'no', evaluacion: [...], nota? }   (respuesta corta: "Sí es sobre", "No es función")
+//   { evaluacion: [...], nota? }   (solo una explicación, renglón por renglón)
+//   Cualquiera puede llevar grafica: { f, de, a, y? } (la dibuja grafica.js) y cierre: false (sin renglón final).
 // Los demás campos (tesis, hipotesis, datos, verificar, c) solo los usa tools/verificar.mjs.
 (function () {
   const { el, barajar, formula } = ESTUDIO;
@@ -169,18 +172,24 @@
 
     if ('respuesta' in s) {
       const lineas = (s.evaluacion || []).map((l) => el('div', {}, l));
-      partes.push(el('div', { class: `veredicto ${s.respuesta ? 'si' : 'no'}` }, s.respuesta ? 'Verdadero' : 'Falso'),
+      const esBool = typeof s.respuesta === 'boolean';
+      const tono = esBool ? (s.respuesta ? 'si' : 'no') : (s.tono || 'neutro');
+      partes.push(el('div', { class: `veredicto ${tono}` }, esBool ? (s.respuesta ? 'Verdadero' : 'Falso') : s.respuesta),
         el('div', { class: 'evaluacion' }, ...lineas));
       // Sin "un renglón más": el veredicto ya es la respuesta
     } else if (s.contraejemplo) {
       const lineas = s.evaluacion.map((l) => el('div', {}, l));
-      const cierre = el('p', { class: 'qed' }, s.cierre || 'La fórmula no es tautología: queda refutada.');
+      const cierre = s.cierre === false ? null : el('p', { class: 'qed' }, s.cierre || 'La fórmula no es tautología: queda refutada.');
       partes.push(
         el('div', { class: 'asignacion' }, ...Object.entries(s.contraejemplo).map(([v, val]) =>
           el('span', { class: 'chip-valor' }, typeof val === 'boolean' ? `${v} = ${val ? 'V' : 'F'}` : `${v} = ${val}`))),
         el('div', { class: 'evaluacion' }, ...lineas), cierre);
       lineas.forEach((l) => grupos.push([l]));
-      final.push(cierre);
+      if (cierre) final.push(cierre);
+    } else if (!s.pasos) {
+      const lineas = (s.evaluacion || []).map((l) => el('div', {}, l));
+      if (lineas.length) partes.push(el('div', { class: 'evaluacion' }, ...lineas));
+      lineas.forEach((l) => grupos.push([l]));
     } else {
       const conOp = s.pasos.some((x) => x.op);
       const cols = conOp ? 4 : 3;
@@ -211,10 +220,16 @@
       });
       partes.push(el('div', { class: 'tabla-scroll' }, tabla));
       const porContradiccion = s.pasos.some((x) => x.tipo === 'negacion');
-      const qed = el('p', { class: 'qed' }, s.cierre || (porContradiccion
-        ? 'Suponer la negación de la conclusión lleva a F, así que la fórmula es tautología. Q.E.D.'
-        : 'Q.E.D.'));
-      partes.push(qed); final.push(qed);
+      if (s.cierre !== false) {
+        const qed = el('p', { class: 'qed' }, s.cierre || (porContradiccion
+          ? 'Suponer la negación de la conclusión lleva a F, así que la fórmula es tautología. Q.E.D.'
+          : 'Q.E.D.'));
+        partes.push(qed); final.push(qed);
+      }
+    }
+    if (s.grafica && ESTUDIO.grafica) {
+      const g = el('div', { class: 'grafica-sol' }, ESTUDIO.grafica(s.grafica));
+      partes.push(g); final.push(g);
     }
     if (s.nota) {
       const nota = el('p', { class: 'nota' }, s.nota);
